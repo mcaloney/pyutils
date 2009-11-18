@@ -1,7 +1,6 @@
-import os
-import os.path
-import sys
+import os, os.path, sys, shutil
 from hashlib import md5
+from optparse import OptionParser
 
 def hash_directory(hashes, directory, files):
     for filename in files:
@@ -32,7 +31,25 @@ def dump_to_file(data, filename):
     output_file.write(repr(data))
     output_file.close()
 
+def main():
+    usage = 'usage: %prog [options] folder'
+    parser = OptionParser(usage)
+    parser.add_option('-o', '--output', dest='output_dir',
+                      help='output directory')
+    parser.add_option('-v', '--verbose', dest='verbose',
+                      default=True, help='verbose mode')
+    (options, args) = parser.parse_args()
+    if len(args) != 1:
+        parser.error('incorrect number of arguments')
+
 if __name__ == '__main__':
+    # options:
+    #   - base output directory
+    #   - location of files to check
+    #   - whether to rename originals or try to choose a representative "intelligently"
+    #       - this would need to be consistent across similarly-named duplicate items
+    #   - file type filter
+
     hashes = {}
     # walk through the directory structure, hashing the files in each subdir
 #    os.path.walk(os.path.expandvars('$HOME/Desktop/iPhoto Library'), hash_directory, hashes)
@@ -60,7 +77,6 @@ if __name__ == '__main__':
         print e
         sys.exit(1)
 
-    import shutil
     for hash, files in hashes.items():
         extension = os.path.splitext(files[0])[1]
         original_name = os.path.join(originals_dir, hash + extension)
