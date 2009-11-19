@@ -34,29 +34,44 @@ def dump_to_file(data, filename):
 def main():
     usage = 'usage: %prog [options] folder'
     parser = OptionParser(usage)
+    parser.add_option('--hashes', dest='hashes_file',
+                      help='load precomputed duplicate list from a separate file')
+    parser.add_option('-n', '--dry-run',
+                      action='store_true', dest='dry_run', default=False,
+                      help='do not copy files; output list of duplicates and exit')
     parser.add_option('-o', '--output', dest='output_dir',
                       help='output directory')
-    parser.add_option('-v', '--verbose', dest='verbose',
-                      default=True, help='verbose mode')
+    parser.add_option('-v', '--verbose',
+                      action='store_true', dest='verbose', default=False,
+                      help='verbose mode')
     (options, args) = parser.parse_args()
     if len(args) != 1:
         parser.error('incorrect number of arguments')
+    
+    # if precomputed hashes are provided, don't recompute them
+    if options.hashes_file:
+        options.hashes_file = options.hashes_file if os.path.isabs(options.hashes_file) else os.path.abspath(options.hashes_file)
+        hashes = eval(open(options.hashes_file), read())
+    else:
+        # normalize the path we've been sent
+        search_root = args[0] if os.path.isabs(args[0]) else os.path.abspath(args[0])
+        hashes = dict()
+        # walk through the directory structure, hashing the files in each subdir
+        os.path.walk(search_root, hash_directory, hashes)
+
+        # dump the hashes to a separate file for testing
+        dump_to_file(hashes, os.path.expandvars('$HOME/dupefinder_hashes'))
+
+        # if we need to output the hashes to stdout
+        if options.dry_run or options.verbose:
+            for hash, files in hashes.items():
+                print hash, '\n\t', '\n\t'.join(files)
+
+        # if it's a dry run, then we're finished
+        if options.dry_run:
+            sys.exit(0)
 
 if __name__ == '__main__':
-    # options:
-    #   - base output directory
-    #   - location of files to check
-    #   - whether to rename originals or try to choose a representative "intelligently"
-    #       - this would need to be consistent across similarly-named duplicate items
-    #   - file type filter
-
-    hashes = {}
-    # walk through the directory structure, hashing the files in each subdir
-#    os.path.walk(os.path.expandvars('$HOME/Desktop/iPhoto Library'), hash_directory, hashes)
-#    # dump the hashes to a separate file so I don't have to keep regenerating them
-#    # while testing this
-#    dump_to_file(hashes, '/Users/mcaloney/src/pyutils/hash_values')
-#    sys.exit(0)
 
     # while testing, use our cached hashes list
     hashes = eval(open('/Users/mcaloney/src/pyutils/hash_values', 'r').read())
