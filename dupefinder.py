@@ -51,7 +51,7 @@ def main():
     # if precomputed hashes are provided, don't recompute them
     if options.hashes_file:
         options.hashes_file = options.hashes_file if os.path.isabs(options.hashes_file) else os.path.abspath(options.hashes_file)
-        hashes = eval(open(options.hashes_file), read())
+        hashes = eval(open(options.hashes_file).read())
     else:
         # normalize the path we've been sent
         search_root = args[0] if os.path.isabs(args[0]) else os.path.abspath(args[0])
@@ -71,20 +71,19 @@ def main():
         if options.dry_run:
             sys.exit(0)
 
-if __name__ == '__main__':
+    # sort the files
+    if not options.dry_run:
+        sort_files(options.output_dir, hashes, return_first)
 
-    # while testing, use our cached hashes list
-    hashes = eval(open('/Users/mcaloney/src/pyutils/hash_values', 'r').read())
-
+def sort_files(base_directory, hashes, original_selector):
     # sort the files: pick a representative from each equiv class and
     # put it in an 'originals' dir with its hashcode as its filename
     # the rest go in hashcode-distinguished subdirs of 'duplicates'
     # so that they can be "easily" verified.
-    output_dir = '/Users/mcaloney/images'
     duplicates_dir_name = 'duplicates'
     originals_dir_name = 'originals'
-    duplicates_dir = os.path.join(output_dir, duplicates_dir_name)
-    originals_dir = os.path.join(output_dir, originals_dir_name)
+    duplicates_dir = os.path.join(base_directory, duplicates_dir_name)
+    originals_dir = os.path.join(base_directory, originals_dir_name)
     try:
         os.makedirs(duplicates_dir)
         os.makedirs(originals_dir)
@@ -93,9 +92,10 @@ if __name__ == '__main__':
         sys.exit(1)
 
     for hash, files in hashes.items():
-        extension = os.path.splitext(files[0])[1]
+        original_file = original_selector(files)
+        extension = os.path.splitext(original_file)[1]
         original_name = os.path.join(originals_dir, hash + extension)
-        shutil.copy(files[0], original_name)
+        shutil.copy(original_file, original_name)
 
         # if there were multiple files with this hashcode, copy all
         # of them to the duplicates dir
@@ -103,3 +103,9 @@ if __name__ == '__main__':
             os.mkdir(os.path.join(duplicates_dir, hash))
             for index in range(len(files)):
                 shutil.copy(files[index], os.path.join(duplicates_dir, hash, str(index) + extension))
+
+def return_first(a_list):
+    return a_list[0]
+
+if __name__ == '__main__':
+    main()
