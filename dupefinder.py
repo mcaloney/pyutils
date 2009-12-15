@@ -2,17 +2,35 @@ import os, os.path, sys, shutil
 from hashlib import md5
 from optparse import OptionParser
 
+def hash_all_orientations(filename):
+    import Image
+    img_hashes = []
+    img = Image.open(filename)
+    
+    # compute hashes for all four orientations
+    # we explicitly rotate the image four times (rather than just hashing
+    # the original image and three 90 degree rotations) because Image.save()
+    # throws away EXIF data, so we need all four hashes to be without EXIF
+    # data.
+    for i in range(4):
+        img = Image.transpose(Image.ROTATE_90)
+        m = md5()
+        m.update(img.tostring())
+        img_hashes.append(m.hexdigest())
+
+    return img_hashes
+
 def hash_directory(hashes, directory, files):
     for filename in files:
         fullpath = os.path.join(directory, filename)
         if not os.path.isdir(fullpath):
-            m = md5()
-            m.update(open(fullpath).read())
-            if hashes.has_key(m.hexdigest()):
-                print 'DUPLICATE FOUND FOR', m.hexdigest()
-                hashes[m.hexdigest()].append(fullpath)
-            else:
-                hashes[m.hexdigest()] = [fullpath]
+            img_hashes = hash_all_orientations(fullpath)
+            for hash_val in img_hashes:
+                if hashes.has_key(hash_val):
+                    print 'DUPLICATE FOUND FOR', hash_val
+                    hashes[hash_val].append(fullpath)
+                else:
+                    hashes[hash_val] = [fullpath]
 
 def print_files_and_md5(arg, directory, files):
     for filename in files:
