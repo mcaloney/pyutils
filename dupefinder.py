@@ -5,18 +5,21 @@ from optparse import OptionParser
 def hash_all_orientations(filename):
     import Image
     img_hashes = []
-    img = Image.open(filename)
-    
-    # compute hashes for all four orientations
-    # we explicitly rotate the image four times (rather than just hashing
-    # the original image and three 90 degree rotations) because Image.save()
-    # throws away EXIF data, so we need all four hashes to be without EXIF
-    # data.
-    for i in range(4):
-        img = Image.transpose(Image.ROTATE_90)
-        m = md5()
-        m.update(img.tostring())
-        img_hashes.append(m.hexdigest())
+    try:
+        img = Image.open(filename)
+        
+        # compute hashes for all four orientations
+        # we explicitly rotate the image four times (rather than just hashing
+        # the original image and three 90 degree rotations) because Image.save()
+        # throws away EXIF data, so we need all four hashes to be without EXIF
+        # data.
+        for i in range(4):
+            img = img.transpose(Image.ROTATE_90)
+            m = md5()
+            m.update(img.tostring())
+            img_hashes.append(m.hexdigest())
+    except IOError, e:
+        print 'Failed to open file %s: %s' % (filename, e)
 
     return img_hashes
 
